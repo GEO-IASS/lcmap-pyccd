@@ -3,6 +3,8 @@ import sklearn.linear_model as lm
 from ccd.app import logging, defaults
 from ccd.math_utils import calculate_variogram
 
+from ccd.models import robust_fit
+
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +48,8 @@ def tmask(dates, observations, variogram, bands=defaults.TMASK_BANDS,
     """
     # variogram = calculate_variogram(observations)
     # Time and expected values using a four-part matrix of coefficients.
-    regression = lm.LinearRegression()
+    # regression = lm.LinearRegression()
+    regression = robust_fit.RLM(maxiter=5)
 
     tmask_matrix = tmask_coefficient_matrix(dates)
 
@@ -58,8 +61,10 @@ def tmask(dates, observations, variogram, bands=defaults.TMASK_BANDS,
     # For each band, determine if the delta between predeicted and actual
     # values exceeds the threshold. If it does, then it is an outlier.
     for band_ix in bands:
-        fit = regression.fit(tmask_matrix, observations[band_ix])
-        predicted = fit.predict(tmask_matrix)
+        # fit = regression.fit(tmask_matrix, observations[band_ix])
+        regression.fit(tmask_matrix, observations[band_ix])
+        # predicted = fit.predict(tmask_matrix)
+        predicted = regression.predict(tmask_matrix)
         outliers += np.abs(predicted - observations[band_ix]) > variogram[band_ix] * t_const
 
     # Keep all observations that aren't outliers.
